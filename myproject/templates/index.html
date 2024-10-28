@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>{% block title %} Let's Go Somewhere New {% endblock %}</h1>
+
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Description</th>
+                <th>Address</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for location in locations %}
+            <tr>
+                <td>
+                    <a href="{{ url_for('location', location_id=location['id']) }}">
+                        {{ location['name'] }}
+                    </a>
+                </td>
+                <td>{{ location['description'] }}</td>
+                <td>{{ location['address'] }}</td>
+                <td>
+                    <a href="{{ url_for('edit', id=location['id']) }}" class="btn btn-warning btn-sm">Edit</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}

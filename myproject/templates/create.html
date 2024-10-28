@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>{% block title %} Create a New Location {% endblock %}</h1>
+
+<form method="POST">
+    <div class="form-group">
+        <label for="name">Name</label>
+        <input type="text" name="name"
+               placeholder="Location name" class="form-control"
+               value="{{ request.form['name'] }}"></input>
+    </div>
+
+    <div class="form-group">
+        <label for="content">Description</label>
+        <textarea name="description" placeholder="Location Description"
+                  class="form-control">{{ request.form['description'] }}</textarea>
+    </div>
+
+    <div class="form-group">
+        <label for="content">Activities</label>
+        <textarea name="activities" placeholder="What did you do? (seperate with a comma) i.e: Running, Hiking"
+                  class="form-control">{{ request.form['activities'] }}</textarea>
+    </div>
+
+    <div class="form-group">
+        <label for="content">Address</label>
+        <textarea name="address" placeholder="Location Address"
+                  class="form-control">{{ request.form['address'] }}</textarea>
+    </div>
+
+    <div class="form-group">
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </div>
+</form>
+{% endblock %}
