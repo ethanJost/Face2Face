@@ -1,7 +1,5 @@
 USE `database`;
 
-DROP TABLE IF EXISTS posts;
-
 DROP TABLE IF EXISTS location_activities;
 
 DROP TABLE IF EXISTS locations CASCADE;

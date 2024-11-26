@@ -1,0 +1,59 @@
+<!-- templates/report.html -->
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="mt-4">
+    <h1 class="text-center">Activity Report</h1>
+    <hr>
+
+    <!-- Filter Form -->
+    <form method="post" class="mb-4">
+        <div class="form-row">
+            <!-- Activity Selection -->
+            <div class="form-group col-md-10">
+                <label for="activity">Select Activity</label>
+                <select id="activity" name="activity" class="form-control">
+                    <option value="" disabled selected>Select an activity</option>
+                    {% for activity in activities %}
+                        <option value="{{ activity['id'] }}">{{ activity['name'] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="form-group col-md-2 align-self-end">
+                <button type="submit" class="btn btn-primary btn-block">Generate Report</button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Report Section -->
+    {% if locations %}
+        <h3 class="mb-3">Report Results</h3>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Location Name</th>
+                    <th>Description</th>
+                    <th>Address</th>
+                    <th>Activities</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for location in locations %}
+                    <tr>
+                        <td>{{ location['name'] }}</td>
+                        <td>{{ location['description'] }}</td>
+                        <td>{{ location['address'] }}</td>
+                        <td>{{ location['activities'] }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% elif request.method == 'POST' %}
+        <div class="alert alert-warning" role="alert">
+            No locations found matching the selected activity.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

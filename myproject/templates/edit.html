@@ -1,29 +1,41 @@
+<!-- templates/edit.html -->
 {% extends 'base.html' %}
 
 {% block content %}
 <h1>{% block title %} Edit "{{ location['name'] }}" {% endblock %}</h1>
 
 <form method="post">
+    <!-- Name Field -->
     <div class="form-group">
         <label for="name">Name</label>
         <input type="text" name="name" placeholder="Location name"
                class="form-control"
-               value="{{ request.form['name'] or location['name'] }}">
-        </input>
+               value="{{ request.form.get('name', location['name']) }}">
     </div>
 
+    <!-- Description Field -->
     <div class="form-group">
         <label for="description">Description</label>
         <textarea name="description" placeholder="Location description"
-                  class="form-control">{{ request.form['description'] or location['description'] }}</textarea>
+                  class="form-control">{{ request.form.get('description', location['description']) }}</textarea>
     </div>
 
+    <!-- Address Field -->
     <div class="form-group">
         <label for="address">Address</label>
         <textarea name="address" placeholder="Location address"
-                  class="form-control">{{ request.form['address'] or location['address'] }}</textarea>
+                  class="form-control">{{ request.form.get('address', location['address']) }}</textarea>
     </div>
 
+    <!-- Activities Field -->
+    <div class="form-group">
+        <label for="activities">Activities (separated by commas)</label>
+        <input type="text" name="activities" placeholder="e.g., Hiking, Swimming"
+               class="form-control"
+               value="{{ request.form.get('activities', ', '.join(location['activities'])) }}">
+    </div>
+
+    <!-- Submit Button -->
     <div class="form-group">
         <button type="submit" class="btn btn-primary">Submit</button>
     </div>
@@ -31,6 +43,7 @@
 
 <hr>
 
+<!-- Delete Location Form -->
 <form action="{{ url_for('delete', id=location['id']) }}" method="POST">
     <input type="submit" value="Delete Location"
             class="btn btn-danger btn-sm"

@@ -1,29 +1,23 @@
-import mysql.connector
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
 
-connection = mysql.connector.connect(
-    host="localhost",
-    user="root",
-    password="",
-    database="database"
-)
+# init SQLAlchemy so we can use it later in our models
+db = SQLAlchemy()
 
-cur = connection.cursor()
+def create_app():
+    app = Flask(__name__)
 
-with open('schema.sql') as f:
-    sql_commands = f.read().split(';')  # Split the file content by semicolon to handle multiple queries
-    for command in sql_commands:
-        if command.strip():  # Skip empty commands
-            cur.execute(command)
+    app.config['SECRET_KEY'] = 'secret-key-goes-here'
+    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///db.sqlite'
 
-cur = connection.cursor()
+    db.init_app(app)
 
-cur.execute("INSERT INTO locations (name, description, address) VALUES (%s, %s, %s)",
-            ('First Location', 'Description of the first location', 'Address of the First Location')
-            )
+    # blueprint for auth routes in our app
+    from .auth import auth as auth_blueprint
+    app.register_blueprint(auth_blueprint)
 
-cur.execute("INSERT INTO locations (name, description, address) VALUES (%s, %s, %s)",
-            ('Second Location', 'Description of the second location', 'address of the Second location')
-            )
+    # blueprint for non-auth parts of app
+    from .main import main as main_blueprint
+    app.register_blueprint(main_blueprint)
 
-connection.commit()
-connection.close()
+    return app
