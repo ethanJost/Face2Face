@@ -1,5 +1,7 @@
 USE `database`;
 
+DROP TABLE EXISTS users;
+
 DROP TABLE IF EXISTS location_activities;
 
 DROP TABLE IF EXISTS locations CASCADE;
@@ -24,4 +26,10 @@ CREATE TABLE location_activities (
     PRIMARY KEY (location_id, activity_id),
     FOREIGN KEY (location_id) REFERENCES locations(id),
     FOREIGN KEY (activity_id) REFERENCES activities(id)
+);
+
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL
 );

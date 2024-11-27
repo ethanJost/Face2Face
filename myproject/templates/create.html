@@ -1,36 +1,36 @@
 {% extends 'base.html' %}
 
+{% block title %}Create Location - Face2Face{% endblock %}
+
 {% block content %}
-<h1>{% block title %} Create a New Location {% endblock %}</h1>
-
-<form method="POST">
-    <div class="form-group">
-        <label for="name">Name</label>
-        <input type="text" name="name"
-               placeholder="Location name" class="form-control"
-               value="{{ request.form['name'] }}"></input>
+<div class="container">
+  <h2 class="my-4">Create a New Location</h2>
+  <form method="POST">
+    {{ form.hidden_tag() }}
+    <div class="mb-3">
+      {{ form.name.label(class="form-label") }}
+      {{ form.name(class="form-control") }}
+      {% if form.name.errors %}
+        <div class="text-danger">
+          {% for error in form.name.errors %}
+            {{ error }}
+          {% endfor %}
+        </div>
+      {% endif %}
     </div>
-
-    <div class="form-group">
-        <label for="content">Description</label>
-        <textarea name="description" placeholder="Location Description"
-                  class="form-control">{{ request.form['description'] }}</textarea>
+    <div class="mb-3">
+      {{ form.description.label(class="form-label") }}
+      {{ form.description(class="form-control") }}
     </div>
-
-    <div class="form-group">
-        <label for="content">Activities</label>
-        <textarea name="activities" placeholder="What did you do? (seperate with a comma) i.e: Running, Hiking"
-                  class="form-control">{{ request.form['activities'] }}</textarea>
+    <div class="mb-3">
+      {{ form.address.label(class="form-label") }}
+      {{ form.address(class="form-control") }}
     </div>
-
-    <div class="form-group">
-        <label for="content">Address</label>
-        <textarea name="address" placeholder="Location Address"
-                  class="form-control">{{ request.form['address'] }}</textarea>
+    <div class="mb-3">
+      {{ form.activities.label(class="form-label") }}
+      {{ form.activities(class="form-control") }}
     </div>
-
-    <div class="form-group">
-        <button type="submit" class="btn btn-primary">Submit</button>
-    </div>
-</form>
+    {{ form.submit(class="btn btn-primary") }}
+  </form>
+</div>
 {% endblock %}

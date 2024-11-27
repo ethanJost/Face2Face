@@ -3,6 +3,7 @@ from sqlalchemy import create_engine, Column, Integer, String, Text, Table, Fore
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
+from stored_procedures import get_db_connection
 
 Base = declarative_base()
 
@@ -29,14 +30,21 @@ user_locations = Table('user_locations', Base.metadata,
     Column('user_id', Integer, ForeignKey('users.id')),
     Column('location_id', Integer, ForeignKey('locations.id'))
 )
-class User(Base, UserMixin):
-    __tablename__ = 'users'
-
-    id = Column(Integer, primary_key=True)
-    username = Column(String(150), unique=True, nullable=False)
-    password_hash = Column(String(128), nullable=False)
-    # Relationship to track visited locations
-    visited_locations = relationship('Location', secondary=user_locations, backref='visitors')
+class User(UserMixin):
+    def __init__(self, id, username, password_hash):
+        self.id = id
+        self.username = username
+        self.password_hash = password_hash
+    
+    def load_user(user_id):
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        cur.execute('SELECT * FROM users WHERE id = %s', (user_id,))
+        user = cur.fetchone()
+        conn.close()
+        if user:
+            return User(user['id'], user['username'], user['password_hash'])
+        return None
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)

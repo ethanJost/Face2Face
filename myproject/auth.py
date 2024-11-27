@@ -1,5 +1,4 @@
 from flask import Blueprint
-from . import db
 
 auth = Blueprint('auth', __name__)
 
@@ -7,9 +6,9 @@ auth = Blueprint('auth', __name__)
 def login():
     return 'Login'
 
-@auth.route('/signup')
-def signup():
-    return 'Signup'
+@auth.route('/register')
+def register():
+    return 'Register'
 
 @auth.route('/logout')
 def logout():

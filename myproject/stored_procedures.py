@@ -45,6 +45,14 @@ def get_all_activities(conn):
     cur.close()
     return activities
 
+def get_all_activities_linked(conn):
+    cur = conn.cursor(dictionary=True)
+    cur.execute('SELECT DISTINCT a.id, a.name FROM activities a INNER JOIN location_activities la ON a.id = la.activity_id')
+    activities = cur.fetchall()
+    cur.close()
+    return activities
+
+
 def get_location_by_id(conn, location_id):
     cur = conn.cursor(dictionary=True)
     cur.execute('SELECT * FROM locations WHERE id = %s', (location_id,))

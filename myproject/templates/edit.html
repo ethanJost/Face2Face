@@ -1,52 +1,36 @@
-<!-- templates/edit.html -->
 {% extends 'base.html' %}
 
+{% block title %}Edit Location - Face2Face{% endblock %}
+
 {% block content %}
-<h1>{% block title %} Edit "{{ location['name'] }}" {% endblock %}</h1>
-
-<form method="post">
-    <!-- Name Field -->
-    <div class="form-group">
-        <label for="name">Name</label>
-        <input type="text" name="name" placeholder="Location name"
-               class="form-control"
-               value="{{ request.form.get('name', location['name']) }}">
+<div class="container">
+  <h2 class="my-4">Edit Location</h2>
+  <form method="POST">
+    {{ form.hidden_tag() }}
+    <div class="mb-3">
+      {{ form.name.label(class="form-label") }}
+      {{ form.name(class="form-control") }}
+      {% if form.name.errors %}
+        <div class="text-danger">
+          {% for error in form.name.errors %}
+            {{ error }}
+          {% endfor %}
+        </div>
+      {% endif %}
     </div>
-
-    <!-- Description Field -->
-    <div class="form-group">
-        <label for="description">Description</label>
-        <textarea name="description" placeholder="Location description"
-                  class="form-control">{{ request.form.get('description', location['description']) }}</textarea>
+    <div class="mb-3">
+      {{ form.description.label(class="form-label") }}
+      {{ form.description(class="form-control") }}
     </div>
-
-    <!-- Address Field -->
-    <div class="form-group">
-        <label for="address">Address</label>
-        <textarea name="address" placeholder="Location address"
-                  class="form-control">{{ request.form.get('address', location['address']) }}</textarea>
+    <div class="mb-3">
+      {{ form.address.label(class="form-label") }}
+      {{ form.address(class="form-control") }}
     </div>
-
-    <!-- Activities Field -->
-    <div class="form-group">
-        <label for="activities">Activities (separated by commas)</label>
-        <input type="text" name="activities" placeholder="e.g., Hiking, Swimming"
-               class="form-control"
-               value="{{ request.form.get('activities', ', '.join(location['activities'])) }}">
+    <div class="mb-3">
+      {{ form.activities.label(class="form-label") }}
+      {{ form.activities(class="form-control") }}
     </div>
-
-    <!-- Submit Button -->
-    <div class="form-group">
-        <button type="submit" class="btn btn-primary">Submit</button>
-    </div>
-</form>
-
-<hr>
-
-<!-- Delete Location Form -->
-<form action="{{ url_for('delete', id=location['id']) }}" method="POST">
-    <input type="submit" value="Delete Location"
-            class="btn btn-danger btn-sm"
-            onclick="return confirm('Are you sure you want to delete this location?')">
-</form>
+    {{ form.submit(class="btn btn-primary") }}
+  </form>
+</div>
 {% endblock %}

@@ -8,21 +8,24 @@
 
     <!-- Filter Form -->
     <form method="post" class="mb-4">
+        {{ form.hidden_tag() }}
         <div class="form-row">
             <!-- Activity Selection -->
             <div class="form-group col-md-10">
-                <label for="activity">Select Activity</label>
-                <select id="activity" name="activity" class="form-control">
-                    <option value="" disabled selected>Select an activity</option>
-                    {% for activity in activities %}
-                        <option value="{{ activity['id'] }}">{{ activity['name'] }}</option>
-                    {% endfor %}
-                </select>
+                {{ form.activity.label(class="form-label") }}
+                {{ form.activity(class="form-control") }}
+                {% if form.activity.errors %}
+                    <div class="text-danger">
+                        {% for error in form.activity.errors %}
+                            {{ error }}
+                        {% endfor %}
+                    </div>
+                {% endif %}
             </div>
 
             <!-- Submit Button -->
             <div class="form-group col-md-2 align-self-end">
-                <button type="submit" class="btn btn-primary btn-block">Generate Report</button>
+                {{ form.submit(class="btn btn-primary btn-block") }}
             </div>
         </div>
     </form>

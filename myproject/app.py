@@ -1,8 +1,11 @@
 import mysql.connector
-from flask_login import LoginManager
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask import Flask, render_template, request, redirect, url_for, flash, Blueprint
 from werkzeug.exceptions import abort
-from models import Session, Location, Activity
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_wtf import CSRFProtect
+from models import Session, Location, Activity, User
+from forms import LoginForm, RegistrationForm, LocationForm, ReportForm
 from stored_procedures import (
     get_db_connection,
     get_location_by_id,
@@ -15,7 +18,8 @@ from stored_procedures import (
     get_activity_by_name,
     insert_activity,
     link_location_activity,
-    insert_location
+    insert_location,
+    get_all_activities_linked
 )
 
 app = Flask(__name__)
@@ -23,6 +27,19 @@ app.config['SECRET_KEY'] = 'your secret key'
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+csrf = CSRFProtect(app)
+
+@login_manager.user_loader
+def load_user(user_id):
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+    cur.execute('SELECT * FROM users WHERE id = %s', (user_id,))
+    user = cur.fetchone()
+    conn.close()
+
+    if user:
+        return User(user['id'], user['username'], user['password_hash'])
+    return None
 
 def get_location(location_id):
     conn = get_db_connection()
@@ -49,69 +66,63 @@ def location(location_id):
 
 @app.route('/create', methods=('GET', 'POST'))
 def create():
-    if request.method == 'POST':
-        name = request.form['name']
-        description = request.form['description']
-        address = request.form['address']
-        activities_string = request.form['activities']
+    form = LocationForm()
+    if form.validate_on_submit():
+        name = form.name.data
+        description = form.description.data
+        address = form.address.data
+        activities_string = form.activities.data
         activity_list = [a.strip() for a in activities_string.split(',') if a.strip()]
 
-        if not name:
-            flash('Name is required!')
-        else:
-            session = Session()
-            location = Location(name=name, description=description, address=address)
-            for activity_name in activity_list:
-                activity = session.query(Activity).filter_by(name=activity_name).first()
-                if not activity:
-                    activity = Activity(name=activity_name)
-                location.activities.append(activity)
-            session.add(location)
-            session.commit()
-            session.close()
-            return redirect(url_for('index'))
-    return render_template('create.html')
+        session = Session()
+        location = Location(name=name, description=description, address=address)
+        for activity_name in activity_list:
+            activity = session.query(Activity).filter_by(name=activity_name).first()
+            if not activity:
+                activity = Activity(name=activity_name)
+            location.activities.append(activity)
+        session.add(location)
+        session.commit()
+        session.close()
+        flash('Location created successfully!', 'success')
+        return redirect(url_for('index'))
+    return render_template('create.html', form=form)
 
-
-@app.route('/<int:id>/edit', methods=('GET', 'POST'))
+@app.route('/<int:id>/edit', methods=['GET', 'POST'])
+@login_required
 def edit(id):
     location = get_location(id)
+    activities = ', '.join(location['activities'])
+    form = LocationForm(
+        name=location['name'],
+        description=location['description'],
+        address=location['address'],
+        activities=activities
+    )
 
-    if request.method == 'POST':
-        name = request.form['name']
-        description = request.form['description']
-        address = request.form['address']
-        activities_string = request.form['activities']
+    if form.validate_on_submit():
+        name = form.name.data
+        description = form.description.data
+        address = form.address.data
+        activities_string = form.activities.data
         activity_list = [a.strip() for a in activities_string.split(',') if a.strip()]
 
-        if not name:
-            flash('Name is required!')
-        else:
-            conn = get_db_connection()
-            update_location(conn, id, name, description, address)
-            # Delete existing activity associations
-            delete_location_activities(conn, id)
-            # Update the activities
-            for activity_name in activity_list:
-                # Check if the activity exists
-                activity = get_activity_by_name(conn, activity_name)
-                if activity:
-                    activity_id = activity['id']
-                else:
-                    # Insert new activity
-                    activity_id = insert_activity(conn, activity_name)
-                # Link the activity with the location
-                link_location_activity(conn, id, activity_id)
-            conn.commit()
-            conn.close()
-            return redirect(url_for('index'))
-    else:
-        # Fetch all activities for the form
         conn = get_db_connection()
-        all_activities = get_all_activities(conn)
+        update_location(conn, id, name, description, address)
+        delete_location_activities(conn, id)
+        for activity_name in activity_list:
+            activity = get_activity_by_name(conn, activity_name)
+            if activity:
+                activity_id = activity['id']
+            else:
+                activity_id = insert_activity(conn, activity_name)
+            link_location_activity(conn, id, activity_id)
+        conn.commit()
         conn.close()
-        return render_template('edit.html', location=location, all_activities=all_activities)
-    return render_template('edit.html', location=location)
+        flash('Location updated successfully!', 'success')
+        return redirect(url_for('index'))
+    return render_template('edit.html', form=form)
+
 
 
 @app.route('/<int:id>/delete', methods=('POST',))
@@ -135,78 +146,86 @@ def delete(id):
 @app.route('/report', methods=('GET', 'POST'))
 def report():
     conn = get_db_connection()
-    activities = get_all_activities(conn)
+    activities = get_all_activities_linked(conn)
+    form = ReportForm()
+    # Populate the activity choices
+    form.activity.choices = [(str(activity['id']), activity['name']) for activity in activities]
     locations = []
-    if request.method == 'POST':
-        selected_activity_id = request.form.get('activity')
-        print('Selected Activity ID:', selected_activity_id)  # Debugging statement
-        if selected_activity_id:
-            try:
-                selected_activity_id = int(selected_activity_id)
-                locations = get_locations_by_activity(conn, selected_activity_id)
-                if not locations:
-                    flash('No locations found matching the selected activity.')
-            except ValueError:
-                flash('Invalid activity selected.')
-        else:
-            flash('Please select an activity.')
+    if form.validate_on_submit():
+        selected_activity_id = int(form.activity.data)
+        locations = get_locations_by_activity(conn, selected_activity_id)
+        if not locations:
+            flash('No locations found matching the selected activity.', 'warning')
     conn.close()
-    return render_template('report.html', locations=locations, activities=activities)
+    return render_template('report.html', form=form, locations=locations)
+
+
+
 
 
 @app.route('/profile')
 def profile():
     return render_template('profile.html')
 
-@login_manager.user_loader
-def load_user(user_id):
-    session = Session()
-    user = session.query(User).get(int(user_id))
-    session.close()
-    return user
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+
+    form = LoginForm()
+    if form.validate_on_submit():
+        username = form.username.data
+        password = form.password.data
+        remember = form.remember_me.data
+
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        cur.execute('SELECT * FROM users WHERE username = %s', (username,))
+        user = cur.fetchone()
+        conn.close()
+
+        if user and check_password_hash(user['password_hash'], password):
+            user_obj = User(user['id'], user['username'], user['password_hash'])
+            login_user(user_obj, remember=remember)
+            flash('Logged in successfully!', 'success')
+            return redirect(url_for('index'))
+        else:
+            flash('Invalid username or password', 'danger')
+
+    return render_template('login.html', form=form)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        session = Session()
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
 
-        if session.query(User).filter_by(username=username).first():
-            flash('Username already exists.')
-            session.close()
-            return redirect(url_for('register'))
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        username = form.username.data
+        password = form.password.data
+        password_hash = generate_password_hash(password)
 
-        new_user = User(username=username)
-        new_user.set_password(password)
-        session.add(new_user)
-        session.commit()
-        session.close()
-        flash('Registration successful! Please log in.')
-        return redirect(url_for('login'))
-
-    return render_template('register.html')
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        session = Session()
-        user = session.query(User).filter_by(username=username).first()
-        session.close()
-
-        if user and user.check_password(password):
-            login_user(user)
-            flash('Logged in successfully!')
-            next_page = request.args.get('next')
-            return redirect(next_page or url_for('index'))
-        else:
-            flash('Invalid username or password.')
+        conn = get_db_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute('INSERT INTO users (username, password_hash) VALUES (%s, %s)', (username, password_hash))
+            conn.commit()
+            flash('Registration successful! You can now log in.', 'success')
             return redirect(url_for('login'))
+        except mysql.connector.IntegrityError:
+            flash('Username already exists', 'danger')
+        finally:
+            cur.close()
+            conn.close()
 
-    return render_template('login.html')
+    return render_template('register.html', form=form)
 
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    flash('You have been logged out.')
+    return redirect(url_for('index'))
 
 if __name__ == "__main__":
     app.run(debug=True)
