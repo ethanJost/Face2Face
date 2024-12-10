@@ -49,7 +49,6 @@ def get_location(location_id):
         conn.rollback()
         conn.close()
         abort(404)
-    # Fetch the associated activities
     location['activities'] = get_activities_by_location(conn, location_id)
     conn.rollback()
     conn.close()
@@ -85,7 +84,6 @@ def create():
                         (name, description))
             location_id = cur.lastrowid
 
-            # Handle activities
             for activity_name in activity_list:
                 activity = get_activity_by_name(conn, activity_name)
                 if activity:
@@ -110,11 +108,9 @@ def create():
 @login_required
 def edit(id):
     location = get_location(id)
-    # Use the existing avg_rating and num_ratings from the DB rather than form input now
-    # 'activities' field in form is still used for editing
+    
     activities = ', '.join(location['activities'])
 
-    # We won't allow editing initial rating through the edit form, since rating is now user-driven post creation.
     form = LocationForm(
         name=location['name'],
         description=location['description'],
@@ -130,7 +126,6 @@ def edit(id):
             activities_string = form.activities.data
             activity_list = [a.strip() for a in activities_string.split(',') if a.strip()]
 
-            # Don't touch num_ratings or avg_rating here, just updating name/description/activities
             update_location(conn, id, name, description)  # Passing None for replaced address
             delete_location_activities(conn, id)
             for activity_name in activity_list:
@@ -158,7 +153,7 @@ def delete(id):
     # Writing transaction
     conn = get_db_connection()
     try:
-        location = get_location(id)  # Will open & close conn, let's just re-fetch for clarity:
+        location = get_location(id) 
         conn2 = get_db_connection()
         cur = conn2.cursor()
         # Delete activity associations
