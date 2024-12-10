@@ -74,17 +74,15 @@ def create():
     if form.validate_on_submit():
         name = form.name.data
         description = form.description.data
-        initial_rating = form.rating.data
         activities_string = form.activities.data
         activity_list = [a.strip() for a in activities_string.split(',') if a.strip()]
 
-        # Insert location with initial rating
         conn = get_db_connection()
         cur = conn.cursor()
         try:
-            # Insert new location with num_ratings=1 and avg_rating=initial_rating
-            cur.execute('INSERT INTO locations (name, description, num_ratings, avg_rating) VALUES (%s, %s, %s, %s)',
-                        (name, description, 1, initial_rating))
+            # Insert new location with no initial rating (defaults: num_ratings=0, avg_rating=0)
+            cur.execute('INSERT INTO locations (name, description) VALUES (%s, %s)',
+                        (name, description))
             location_id = cur.lastrowid
 
             # Handle activities

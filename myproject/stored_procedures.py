@@ -15,10 +15,10 @@ def get_db_connection():
     cur.close()
     return conn
 
-def insert_location(conn, name, description, address):
+def insert_location(conn, name, description):
     cur = conn.cursor()
-    cur.execute('INSERT INTO locations (name, description, address) VALUES (%s, %s, %s)',
-                (name, description, address))
+    cur.execute('INSERT INTO locations (name, description) VALUES (%s, %s)',
+                (name, description))
     location_id = cur.lastrowid
     cur.close()
     return location_id
@@ -108,7 +108,7 @@ def delete_location(conn, location_id):
 def get_locations_by_activity(conn, activity_id):
     cur = conn.cursor(dictionary=True)
     query = '''
-    SELECT l.id, l.name, l.description, l.address,
+    SELECT l.id, l.name, l.description, l.num_ratings, l.avg_rating,
            GROUP_CONCAT(DISTINCT a.name ORDER BY a.name SEPARATOR ', ') AS activities
     FROM locations l
     JOIN location_activities la ON l.id = la.location_id
@@ -116,7 +116,7 @@ def get_locations_by_activity(conn, activity_id):
     WHERE l.id IN (
         SELECT location_id FROM location_activities WHERE activity_id = %s
     )
-    GROUP BY l.id, l.name, l.description, l.address
+    GROUP BY l.id, l.name, l.description, l.num_ratings, l.avg_rating
     '''
     cur.execute(query, (activity_id,))
     locations = cur.fetchall()
