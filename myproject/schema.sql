@@ -6,11 +6,15 @@ DROP TABLE IF EXISTS location_activities;
 
 DROP TABLE IF EXISTS locations CASCADE;
 
+DROP TABLE EXISTS users;
+
+
 CREATE TABLE locations (
-    id INTEGER PRIMARY KEY AUTO_INCREMENT,
+    id INT PRIMARY KEY AUTO_INCREMENT,
     name TEXT NOT NULL,
     description TEXT NOT NULL,
-    address TEXT
+    num_ratings INT NOT NULL DEFAULT 0,
+    avg_rating FLOAT NOT NULL DEFAULT 0
 );
 
 DROP TABLE IF EXISTS activities;
@@ -33,3 +37,4 @@ CREATE TABLE users (
     username VARCHAR(50) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL
 );
+

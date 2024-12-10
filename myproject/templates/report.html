@@ -1,4 +1,3 @@
-<!-- templates/report.html -->
 {% extends 'base.html' %}
 
 {% block content %}
@@ -38,7 +37,8 @@
                 <tr>
                     <th>Location Name</th>
                     <th>Description</th>
-                    <th>Address</th>
+                    <th>Average Rating</th>
+                    <th>Number of Ratings</th>
                     <th>Activities</th>
                 </tr>
             </thead>
@@ -47,7 +47,9 @@
                     <tr>
                         <td>{{ location['name'] }}</td>
                         <td>{{ location['description'] }}</td>
-                        <td>{{ location['address'] }}</td>
+                        <!-- Instead of address, show rating info -->
+                        <td>{{ location['avg_rating'] }}</td>
+                        <td>{{ location['num_ratings'] }}</td>
                         <td>{{ location['activities'] }}</td>
                     </tr>
                 {% endfor %}

@@ -1,7 +1,23 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <h2>{% block title %} {{ location['name'] }} {% endblock %}</h2>
-    <p>{{ location['description'] }}</p>
-    <p>{{ location['address'] }}</p>
+    <h2>{{ location['name'] }}</h2>
+    <p>Description: {{ location['description'] }}</p>
+    <p>Average Rating: {{ location['avg_rating'] }} ({{ location['num_ratings'] }} ratings)</p>
+
+    {% if location['activities'] %}
+      <p>Activities: {{ location['activities']|join(', ') }}</p>
+    {% else %}
+      <p>No activities listed for this location.</p>
+    {% endif %}
+
+    <!-- Check if user is logged in before showing edit/delete options -->
+    {% if current_user.is_authenticated %}
+      <hr>
+      <a href="{{ url_for('edit', id=location['id']) }}" class="btn btn-primary">Edit</a>
+      <form action="{{ url_for('delete', id=location['id']) }}" method="POST" style="display:inline;">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-danger">Delete</button>
+      </form>
+    {% endif %}
 {% endblock %}

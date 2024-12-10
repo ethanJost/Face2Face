@@ -1,32 +1,22 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <h1>{% block title %} Let's Go Somewhere New {% endblock %}</h1>
-
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Description</th>
-                <th>Address</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for location in locations %}
-            <tr>
-                <td>
-                    <a href="{{ url_for('location', location_id=location['id']) }}">
-                        {{ location['name'] }}
-                    </a>
-                </td>
-                <td>{{ location['description'] }}</td>
-                <td>{{ location['address'] }}</td>
-                <td>
-                    <a href="{{ url_for('edit', id=location['id']) }}" class="btn btn-warning btn-sm">Edit</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+<h2>All Locations</h2>
+<ul>
+{% for loc in locations %}
+    <li>
+        <!-- Make location name clickable -->
+        <strong><a href="{{ url_for('location', location_id=loc.id) }}">{{ loc.name }}</a></strong><br>
+        Description: {{ loc.description }}<br>
+        Current Rating: {{ loc.avg_rating }} ({{ loc.num_ratings }} ratings)<br>
+        <form action="{{ url_for('rate_location', id=loc.id) }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label for="rating_{{ loc.id }}">Rate (1-5):</label>
+            <input type="number" name="rating" id="rating_{{ loc.id }}" min="1" max="5" required>
+            <button type="submit">Submit Rating</button>
+        </form>
+    </li>
+{% endfor %}
+</ul>
 {% endblock %}
+

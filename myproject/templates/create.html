@@ -1,30 +1,24 @@
 {% extends 'base.html' %}
 
-{% block title %}Create Location - Face2Face{% endblock %}
+{% block title %}Create Location{% endblock %}
 
 {% block content %}
 <div class="container">
-  <h2 class="my-4">Create a New Location</h2>
+  <h2 class="my-4">Create Location</h2>
   <form method="POST">
     {{ form.hidden_tag() }}
     <div class="mb-3">
       {{ form.name.label(class="form-label") }}
       {{ form.name(class="form-control") }}
-      {% if form.name.errors %}
-        <div class="text-danger">
-          {% for error in form.name.errors %}
-            {{ error }}
-          {% endfor %}
-        </div>
-      {% endif %}
     </div>
     <div class="mb-3">
       {{ form.description.label(class="form-label") }}
       {{ form.description(class="form-control") }}
     </div>
+    <!-- Replaced address field with rating field -->
     <div class="mb-3">
-      {{ form.address.label(class="form-label") }}
-      {{ form.address(class="form-control") }}
+      {{ form.rating.label(class="form-label") }}
+      {{ form.rating(class="form-control") }}
     </div>
     <div class="mb-3">
       {{ form.activities.label(class="form-label") }}

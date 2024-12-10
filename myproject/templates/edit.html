@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Edit Location - Face2Face{% endblock %}
+{% block title %}Edit Location{% endblock %}
 
 {% block content %}
 <div class="container">
@@ -22,15 +22,18 @@
       {{ form.description.label(class="form-label") }}
       {{ form.description(class="form-control") }}
     </div>
-    <div class="mb-3">
-      {{ form.address.label(class="form-label") }}
-      {{ form.address(class="form-control") }}
-    </div>
+    <!-- Removed address field since it's no longer in the schema -->
     <div class="mb-3">
       {{ form.activities.label(class="form-label") }}
       {{ form.activities(class="form-control") }}
     </div>
     {{ form.submit(class="btn btn-primary") }}
+  </form>
+
+  <!-- Delete Form -->
+  <form method="POST" action="{{ url_for('delete', id=location_id) }}" style="margin-top: 20px;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn btn-danger">Delete Location</button>
   </form>
 </div>
 {% endblock %}

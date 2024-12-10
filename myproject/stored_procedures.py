@@ -3,12 +3,17 @@
 import mysql.connector
 
 def get_db_connection():
-    return mysql.connector.connect(
+    conn = mysql.connector.connect(
         host="localhost",
         user="root",
         password="",
-        database="database"
+        database="database",
+        autocommit=False
     )
+    cur = conn.cursor()
+    cur.execute("SET SESSION TRANSACTION ISOLATION LEVEL READ COMMITTED")
+    cur.close()
+    return conn
 
 def insert_location(conn, name, description, address):
     cur = conn.cursor()
@@ -84,10 +89,10 @@ def get_all_locations_with_activities(conn):
     cur.close()
     return locations
 
-def update_location(conn, location_id, name, description, address):
+def update_location(conn, location_id, name, description):
     cur = conn.cursor()
-    cur.execute('UPDATE locations SET name = %s, description = %s, address = %s WHERE id = %s',
-                (name, description, address, location_id))
+    cur.execute('UPDATE locations SET name = %s, description = %s WHERE id = %s',
+                (name, description, location_id))
     cur.close()
 
 def delete_location_activities(conn, location_id):

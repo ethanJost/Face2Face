@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, BooleanField, SubmitField, TextAreaField, SelectField
-from wtforms.validators import DataRequired, EqualTo, Length
+from wtforms import StringField, PasswordField, BooleanField, SubmitField, TextAreaField, SelectField, IntegerField
+from wtforms.validators import DataRequired, EqualTo, Length, NumberRange
 
 
 class LoginForm(FlaskForm):
@@ -44,10 +44,9 @@ class RegistrationForm(FlaskForm):
     submit = SubmitField('Register')
 
 class LocationForm(FlaskForm):
-    name = StringField('Name', validators=[DataRequired(message='Name is required.')])
+    name = StringField('Name', validators=[DataRequired()])
     description = TextAreaField('Description')
-    address = StringField('Address')
-    activities = StringField('Activities (comma-separated)')
+    activities = StringField('Activities', validators=[DataRequired()])
     submit = SubmitField('Submit')
 
 class ReportForm(FlaskForm):

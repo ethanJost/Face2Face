@@ -35,6 +35,7 @@ def load_user(user_id):
     cur = conn.cursor(dictionary=True)
     cur.execute('SELECT * FROM users WHERE id = %s', (user_id,))
     user = cur.fetchone()
+    conn.rollback()
     conn.close()
 
     if user:
@@ -45,10 +46,12 @@ def get_location(location_id):
     conn = get_db_connection()
     location = get_location_by_id(conn, location_id)
     if location is None:
+        conn.rollback()
         conn.close()
         abort(404)
     # Fetch the associated activities
     location['activities'] = get_activities_by_location(conn, location_id)
+    conn.rollback()
     conn.close()
     return location
 
@@ -56,6 +59,7 @@ def get_location(location_id):
 def index():
     conn = get_db_connection()
     locations = get_all_locations_with_activities(conn)
+    conn.rollback()
     conn.close()
     return render_template('index.html', locations=locations)
 
@@ -70,20 +74,36 @@ def create():
     if form.validate_on_submit():
         name = form.name.data
         description = form.description.data
-        address = form.address.data
+        initial_rating = form.rating.data
         activities_string = form.activities.data
         activity_list = [a.strip() for a in activities_string.split(',') if a.strip()]
 
-        session = Session()
-        location = Location(name=name, description=description, address=address)
-        for activity_name in activity_list:
-            activity = session.query(Activity).filter_by(name=activity_name).first()
-            if not activity:
-                activity = Activity(name=activity_name)
-            location.activities.append(activity)
-        session.add(location)
-        session.commit()
-        session.close()
+        # Insert location with initial rating
+        conn = get_db_connection()
+        cur = conn.cursor()
+        try:
+            # Insert new location with num_ratings=1 and avg_rating=initial_rating
+            cur.execute('INSERT INTO locations (name, description, num_ratings, avg_rating) VALUES (%s, %s, %s, %s)',
+                        (name, description, 1, initial_rating))
+            location_id = cur.lastrowid
+
+            # Handle activities
+            for activity_name in activity_list:
+                activity = get_activity_by_name(conn, activity_name)
+                if activity:
+                    activity_id = activity['id']
+                else:
+                    activity_id = insert_activity(conn, activity_name)
+                link_location_activity(conn, location_id, activity_id)
+
+            conn.commit()
+        except:
+            conn.rollback()
+            raise
+        finally:
+            cur.close()
+            conn.close()
+
         flash('Location created successfully!', 'success')
         return redirect(url_for('index'))
     return render_template('create.html', form=form)
@@ -92,55 +112,70 @@ def create():
 @login_required
 def edit(id):
     location = get_location(id)
+    # Use the existing avg_rating and num_ratings from the DB rather than form input now
+    # 'activities' field in form is still used for editing
     activities = ', '.join(location['activities'])
+
+    # We won't allow editing initial rating through the edit form, since rating is now user-driven post creation.
     form = LocationForm(
         name=location['name'],
         description=location['description'],
-        address=location['address'],
+        rating=0,  # Placeholder, won't be used
         activities=activities
     )
 
     if form.validate_on_submit():
-        name = form.name.data
-        description = form.description.data
-        address = form.address.data
-        activities_string = form.activities.data
-        activity_list = [a.strip() for a in activities_string.split(',') if a.strip()]
-
         conn = get_db_connection()
-        update_location(conn, id, name, description, address)
-        delete_location_activities(conn, id)
-        for activity_name in activity_list:
-            activity = get_activity_by_name(conn, activity_name)
-            if activity:
-                activity_id = activity['id']
-            else:
-                activity_id = insert_activity(conn, activity_name)
-            link_location_activity(conn, id, activity_id)
-        conn.commit()
-        conn.close()
+        try:
+            name = form.name.data
+            description = form.description.data
+            activities_string = form.activities.data
+            activity_list = [a.strip() for a in activities_string.split(',') if a.strip()]
+
+            # Don't touch num_ratings or avg_rating here, just updating name/description/activities
+            update_location(conn, id, name, description)  # Passing None for replaced address
+            delete_location_activities(conn, id)
+            for activity_name in activity_list:
+                activity = get_activity_by_name(conn, activity_name)
+                if activity:
+                    activity_id = activity['id']
+                else:
+                    activity_id = insert_activity(conn, activity_name)
+                link_location_activity(conn, id, activity_id)
+            conn.commit()
+        except:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
         flash('Location updated successfully!', 'success')
         return redirect(url_for('index'))
-    return render_template('edit.html', form=form)
+    return render_template('edit.html', form=form, location_id=id)
 
 
-
-@app.route('/<int:id>/delete', methods=('POST',))
+@app.route('/<int:id>/delete', methods=['POST'])
+@login_required
 def delete(id):
-    location = get_location(id)
+    # Writing transaction
     conn = get_db_connection()
-    cur = conn.cursor()
-    # Delete activity associations
-    cur.execute('DELETE FROM location_activities WHERE location_id = %s', (id,))
-    # Delete the location
-    cur.execute('DELETE FROM locations WHERE id = %s', (id,))
-    conn.commit()
-    cur.close()
-    conn.close()
-    if 'name' in location:
-        flash(f'"{location["name"]}" was successfully deleted!')
-    else:
-        flash('The location was successfully deleted!')
+    try:
+        location = get_location(id)  # Will open & close conn, let's just re-fetch for clarity:
+        conn2 = get_db_connection()
+        cur = conn2.cursor()
+        # Delete activity associations
+        cur.execute('DELETE FROM location_activities WHERE location_id = %s', (id,))
+        # Delete the location
+        cur.execute('DELETE FROM locations WHERE id = %s', (id,))
+        conn2.commit()
+        cur.close()
+        conn2.close()
+        flash(f'Location "{location["name"]}" was successfully deleted!', 'success')
+    except:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
     return redirect(url_for('index'))
 
 @app.route('/report', methods=('GET', 'POST'))
@@ -156,6 +191,8 @@ def report():
         locations = get_locations_by_activity(conn, selected_activity_id)
         if not locations:
             flash('No locations found matching the selected activity.', 'warning')
+    # Read-only transaction
+    conn.rollback()
     conn.close()
     return render_template('report.html', form=form, locations=locations)
 
@@ -174,19 +211,16 @@ def login():
 
     form = LoginForm()
     if form.validate_on_submit():
-        username = form.username.data
-        password = form.password.data
-        remember = form.remember_me.data
-
         conn = get_db_connection()
         cur = conn.cursor(dictionary=True)
-        cur.execute('SELECT * FROM users WHERE username = %s', (username,))
+        cur.execute('SELECT * FROM users WHERE username = %s', (form.username.data,))
         user = cur.fetchone()
+        # No changes, just rollback
+        conn.rollback()
         conn.close()
-
-        if user and check_password_hash(user['password_hash'], password):
+        if user and check_password_hash(user['password_hash'], form.password.data):
             user_obj = User(user['id'], user['username'], user['password_hash'])
-            login_user(user_obj, remember=remember)
+            login_user(user_obj, remember=form.remember_me.data)
             flash('Logged in successfully!', 'success')
             return redirect(url_for('index'))
         else:
@@ -201,18 +235,16 @@ def register():
 
     form = RegistrationForm()
     if form.validate_on_submit():
-        username = form.username.data
-        password = form.password.data
-        password_hash = generate_password_hash(password)
-
         conn = get_db_connection()
         cur = conn.cursor()
         try:
-            cur.execute('INSERT INTO users (username, password_hash) VALUES (%s, %s)', (username, password_hash))
+            cur.execute('INSERT INTO users (username, password_hash) VALUES (%s, %s)', 
+                        (form.username.data, generate_password_hash(form.password.data)))
             conn.commit()
             flash('Registration successful! You can now log in.', 'success')
             return redirect(url_for('login'))
         except mysql.connector.IntegrityError:
+            conn.rollback()
             flash('Username already exists', 'danger')
         finally:
             cur.close()
@@ -225,6 +257,44 @@ def register():
 def logout():
     logout_user()
     flash('You have been logged out.')
+    return redirect(url_for('index'))
+
+@app.route('/rate/<int:id>', methods=['POST'])
+@login_required
+def rate_location(id):
+    new_rating = int(request.form.get('rating', 0))
+    if new_rating < 1 or new_rating > 5:
+        flash('Invalid rating. Must be between 1 and 5.', 'danger')
+        return redirect(url_for('index'))
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+    try:
+        # Fetch current ratings info
+        cur.execute('SELECT num_ratings, avg_rating FROM locations WHERE id = %s', (id,))
+        loc = cur.fetchone()
+        if not loc:
+            conn.rollback()
+            flash('Location not found.', 'danger')
+            return redirect(url_for('index'))
+
+        num = loc['num_ratings']
+        avg = loc['avg_rating']
+
+        # Compute new average
+        new_num = num + 1
+        new_avg = ((avg * num) + new_rating) / new_num
+
+        cur.execute('UPDATE locations SET num_ratings = %s, avg_rating = %s WHERE id = %s', (new_num, new_avg, id))
+        conn.commit()
+        flash('Rating submitted successfully!', 'success')
+    except:
+        conn.rollback()
+        raise
+    finally:
+        cur.close()
+        conn.close()
+
     return redirect(url_for('index'))
 
 if __name__ == "__main__":
